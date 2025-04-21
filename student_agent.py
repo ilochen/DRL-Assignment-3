@@ -1,11 +1,12 @@
+import cv2
 import gym
 import torch
 import numpy as np
+from collections import deque
 from random import random, randrange
-
 import torch.nn as nn
 
-# Do not modify the input of the 'act' function and the '__init__' function. 
+
 class CNNDQN(nn.Module):
     def __init__(self, input_shape, num_actions):
         super(CNNDQN, self).__init__()
@@ -48,16 +49,32 @@ class CNNDQN(nn.Module):
 
 
 class Agent(object):
-    """Agent that acts randomly."""
     def __init__(self):
         self.action_space = gym.spaces.Discrete(12)
         self.net = CNNDQN((4, 84, 84), 12)
         self.net.load_state_dict(torch.load("./pretrained.dat", map_location=torch.device('cpu')))
+        self.frame_stack = deque(maxlen=4)
+
+    def preprocess_observation(self, obs):
+        # Convert RGB to grayscale
+        obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+        # Resize to 84x84
+        obs = cv2.resize(obs, (84, 84), interpolation=cv2.INTER_AREA)
+        # Reshape to (1, 84, 84)
+        obs = np.expand_dims(obs, axis=0)
+        # Normalize to [0, 1]
+        obs = obs.astype(np.float32) / 255.0
+        return obs
 
     def act(self, observation):
-        state_v = torch.FloatTensor(np.array([observation], dtype=np.float32) / 255.0)
+        processed = self.preprocess_observation(observation)
+        self.frame_stack.append(processed)
 
+        while len(self.frame_stack) < 4:
+            self.frame_stack.appendleft(processed.copy())
+
+        state = np.concatenate(self.frame_stack, axis=0)  # Shape: (4, 84, 84)
+        state_v = torch.tensor(np.array([state]), dtype=torch.float32)
         q_vals = self.net(state_v).data.numpy()[0]
         action = np.argmax(q_vals)
         return action
-        # return self.action_space.sample()
