@@ -51,8 +51,8 @@ class Agent(object):
     """Agent that acts randomly."""
     def __init__(self):
         self.action_space = gym.spaces.Discrete(12)
-        net = CNNDQN((4, 84, 84), 12)
-        net.load_state_dict(torch.load("./pretrained.dat", map_location=torch.device('cpu')))
+        self.net = CNNDQN((4, 84, 84), 12)
+        self.net.load_state_dict(torch.load("./pretrained.dat", map_location=torch.device('cpu')))
 
     def act(self, observation):
         state_v = torch.tensor(np.array([observation], copy=False))
