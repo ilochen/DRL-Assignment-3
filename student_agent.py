@@ -55,7 +55,8 @@ class Agent(object):
         self.net.load_state_dict(torch.load("./pretrained.dat", map_location=torch.device('cpu')))
 
     def act(self, observation):
-        state_v = torch.tensor(np.array([observation], copy=False))
+        state_v = torch.FloatTensor(np.array([observation], dtype=np.float32) / 255.0)
+
         q_vals = self.net(state_v).data.numpy()[0]
         action = np.argmax(q_vals)
         return action
