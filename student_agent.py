@@ -263,6 +263,6 @@ class Agent:
 
         self.last_action = action
         self.skip_counter = 3
-        if random.random() < 0.03:
+        if random.random() < 0.02:
             action = random.randint(0, 11)
         return action
