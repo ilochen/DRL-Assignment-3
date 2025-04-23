@@ -199,6 +199,8 @@ class Agent:
     def __init__(self):
         self.action_space = gym.spaces.Discrete(12)
         self.net = CNNDQN((4, 84, 84), 12)
+        # self.net.load_state_dict(torch.load("/Users/ilo/Code/DRL_HW3/DRL-Assignment-3/super-mario-bros-dqn/recording/run1598/SuperMarioBros-1-1-v0.dat", map_location=torch.device("cpu")))
+#         
         self.net.load_state_dict(torch.load("pretrained.dat", map_location=torch.device("cpu")))
         self.net.eval()
 
@@ -261,6 +263,6 @@ class Agent:
 
         self.last_action = action
         self.skip_counter = 3
-        if random.random() < 0.05:
+        if random.random() < 0.03:
             action = random.randint(0, 11)
         return action
