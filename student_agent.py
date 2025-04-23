@@ -43,7 +43,10 @@ class Agent:
     def __init__(self):
         self.action_space = gym.spaces.Discrete(12)
         self.net = CNNDQN((4, 84, 84), 12)
-        self.net.load_state_dict(torch.load("pretrained.dat", map_location=torch.device("cpu")))
+        self.net2 = CNNDQN((4, 84, 84), 7)
+        # self.net.load_state_dict(torch.load("/Users/ilo/Code/DRL_HW3/DRL-Assignment-3/super-mario-bros-dqn/recording/run1/SuperMarioBros-1-1-v0.dat", map_location=torch.device("cpu")))
+        self.net.load_state_dict(torch.load("./pretrained.dat", map_location=torch.device("cpu")))
+        # self.net2.load_state_dict(torch.load("./pretrained2.dat", map_location=torch.device("cpu")))
         self.net.eval()
 
         # Frame buffer = (4, 84, 84)
@@ -51,6 +54,7 @@ class Agent:
         self.obs_buffer = deque(maxlen=2)
         self.skip_counter = 0
         self.last_action = None
+        self.epsilon = 0.01
 
     def preprocess_frame(self, obs):
         gray = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
@@ -106,10 +110,38 @@ class Agent:
             obs = np.array(self.buffer).astype(np.float32) / 255.0
 
             state_v = torch.tensor(np.array([obs], copy=False))
+            
             q_vals = self.net(state_v).data.numpy()[0]
-            action = np.argmax(q_vals)
-            self.last_action = action
+            # q_vals2 = self.net2(state_v).data.numpy()[0]
+            # print(q_vals)
+            action1 = np.argmax(q_vals)
+            # action2 = np.argmax(q_vals2)
+            action = action1
+            
+            # if self.epsilon > 0.2:
+            #     action = action2
+            #     if random.random() < 0.1:
+            #         action = random.randint(0, 11)
+            #     self.skip_counter = 20
+            # else:
+            #     self.epsilon *= 1.0095
             self.skip_counter = 3
+            
+            if random.random() < self.epsilon:
+                if self.epsilon > 0.2:
+                    action = random.randint(0, 11)
+                    self.skip_counter = 30
+            else:
+                self.epsilon *= 1.0095
+                
+            self.last_action = action
+            
+                
+            # if self.epsilon > 0.5:
+            #     self.epsilon = 0.01
+            print(self.epsilon)
+            
+            
             return action
 
 # class Agent:
