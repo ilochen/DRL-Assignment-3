@@ -3,7 +3,6 @@ import gym
 import torch
 import numpy as np
 from collections import deque
-from random import random, randrange
 import torch.nn as nn
 
 
@@ -29,52 +28,65 @@ class CNNDQN(nn.Module):
         )
 
     def forward(self, x):
-        x = self.features(x).view(x.size()[0], -1)
+        x = self.features(x).view(x.size(0), -1)
         return self.fc(x)
 
     @property
     def feature_size(self):
-        x = self.features(torch.zeros(1, *self._input_shape))
-        return x.view(1, -1).size(1)
-
-    def act(self, state, epsilon, device):
-        if random() > epsilon:
-            state = torch.FloatTensor(np.float32(state)) \
-                .unsqueeze(0).to(device)
-            q_value = self.forward(state)
-            action = q_value.max(1)[1].item()
-        else:
-            action = randrange(self._num_actions)
-        return action
+        with torch.no_grad():
+            dummy_input = torch.zeros(1, *self._input_shape)
+            return self.features(dummy_input).view(1, -1).size(1)
 
 
-class Agent(object):
+class Agent:
     def __init__(self):
         self.action_space = gym.spaces.Discrete(12)
         self.net = CNNDQN((4, 84, 84), 12)
-        self.net.load_state_dict(torch.load("./pretrained.dat", map_location=torch.device('cpu')))
-        self.frame_stack = deque(maxlen=4)
+        self.net.load_state_dict(torch.load("pretrained.dat", map_location=torch.device("cpu")))
+        self.net.eval()
 
-    def preprocess_observation(self, obs):
-        # Convert RGB to grayscale
-        obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
-        # Resize to 84x84
-        obs = cv2.resize(obs, (84, 84), interpolation=cv2.INTER_AREA)
-        # Reshape to (1, 84, 84)
-        obs = np.expand_dims(obs, axis=0)
-        # Normalize to [0, 1]
-        obs = obs.astype(np.float32) / 255.0
-        return obs
+        # Frame buffer = (4, 84, 84)
+        self.buffer = np.zeros((4, 84, 84), dtype=np.float32)
+        self.obs_buffer = deque(maxlen=2)
+        self.skip_counter = 0
+        self.last_action = 0
 
-    def act(self, observation):
-        processed = self.preprocess_observation(observation)
-        self.frame_stack.append(processed)
+    def preprocess_frame(self, obs):
+        gray = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+        resized = cv2.resize(gray, (84, 84), interpolation=cv2.INTER_AREA)
+        return resized.astype(np.float32)
 
-        while len(self.frame_stack) < 4:
-            self.frame_stack.appendleft(processed.copy())
+    def update_frame_buffer(self, frame):
+        # Slide frames left, insert new one at the end
+        self.buffer[:-1] = self.buffer[1:]
+        self.buffer[-1] = frame
 
-        state = np.concatenate(self.frame_stack, axis=0)  # Shape: (4, 84, 84)
-        state_v = torch.tensor(np.array([state]), dtype=torch.float32)
-        q_vals = self.net(state_v).data.numpy()[0]
-        action = np.argmax(q_vals)
+    def act(self, obs):
+        # Simulate max pooling over last 2 raw frames
+        self.obs_buffer.append(obs)
+        if len(self.obs_buffer) == 2:
+            obs = np.maximum(self.obs_buffer[0], self.obs_buffer[1])
+        else:
+            obs = self.obs_buffer[0]
+
+        # Preprocess: grayscale + resize (returns (84, 84))
+        processed = self.preprocess_frame(obs)
+
+        # Update frame buffer
+        self.update_frame_buffer(processed)
+
+        # Expand dims to (1, 4, 84, 84) and normalize
+        input_tensor = torch.tensor([self.buffer], dtype=torch.float32) / 255.0
+
+        # Action repeat
+        if self.skip_counter > 0:
+            self.skip_counter -= 1
+            return self.last_action
+
+        with torch.no_grad():
+            q_vals = self.net(input_tensor)[0].numpy()
+
+        action = int(np.argmax(q_vals))
+        self.last_action = action
+        self.skip_counter = 2
         return action
