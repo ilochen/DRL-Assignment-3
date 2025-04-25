@@ -44,8 +44,8 @@ class Agent:
         self.action_space = gym.spaces.Discrete(12)
         self.net = CNNDQN((4, 84, 84), 12)
         self.net2 = CNNDQN((4, 84, 84), 7)
-        # self.net.load_state_dict(torch.load("/Users/ilo/Code/DRL_HW3/DRL-Assignment-3/super-mario-bros-dqn/recording/run1/SuperMarioBros-1-1-v0.dat", map_location=torch.device("cpu")))
-        self.net.load_state_dict(torch.load("./pretrained.dat", map_location=torch.device("cpu")))
+        # self.net.load_state_dict(torch.load("/Users/ilo/Code/DRL_HW3/DRL-Assignment-3/super-mario-bros-dqn/recording3/run40/SuperMarioBros-v0.dat", map_location=torch.device("cpu")))
+        self.net.load_state_dict(torch.load("./SuperMarioBros-v0.dat", map_location=torch.device("cpu")))
         # self.net2.load_state_dict(torch.load("./pretrained2.dat", map_location=torch.device("cpu")))
         self.net.eval()
 
@@ -127,19 +127,24 @@ class Agent:
             #     self.epsilon *= 1.0095
             self.skip_counter = 3
             
-            if random.random() < self.epsilon:
-                if self.epsilon > 0.2:
-                    action = random.randint(0, 11)
-                    self.skip_counter = 30
-            else:
-                self.epsilon *= 1.0095
+            # if random.random() < self.epsilon:
+            #     if self.epsilon > 0.2:
+            #         action = random.randint(0, 11)
+            #         self.skip_counter = 40
+            # else:
+            #     self.epsilon *= 1.0095
+            
+            # if random.random() < 0.01:
+            #     action = random.randint(0, 11)
+            #     self.skip_counter = 4
+
                 
             self.last_action = action
             
                 
             # if self.epsilon > 0.5:
             #     self.epsilon = 0.01
-            print(self.epsilon)
+            # print(self.epsilon)
             
             
             return action
